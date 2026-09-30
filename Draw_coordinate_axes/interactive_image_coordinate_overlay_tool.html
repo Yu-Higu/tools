@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<!--
+  Image Coordinate System Tool (Web Version)
+
+  Copyright (c) 2026 Yu-higu
+  Released under the MIT license
+  https://opensource.org/licenses/MIT
+-->
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Coordinate Axis Overlay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom scrollbars for clean UI */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans overflow-hidden select-none">
+
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-3 flex items-center justify-between z-10 shrink-0">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid font-bold text-xl text-indigo-400 fa-compass-drafting"></i>
+            <h1 class="font-bold text-lg text-slate-100 tracking-wide">Image Coordinate System Overlay</h1>
+        </div>
+        <div class="flex items-center space-x-3">
+            <label for="imageLoader" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg cursor-pointer transition flex items-center shadow-lg shadow-indigo-600/30">
+                <i class="fa-solid fa-file-image mr-2"></i> Open Image
+                <input type="file" id="imageLoader" accept="image/*" class="hidden">
+            </label>
+            <button id="exportBtn" class="bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition flex items-center shadow-lg shadow-emerald-600/30">
+                <i class="fa-solid fa-download mr-2"></i> Export Image
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+
+        <!-- Sidebar Control Panel -->
+        <aside class="w-80 md:w-96 bg-slate-800 border-r border-slate-700 flex flex-col overflow-y-auto shrink-0 z-10">
+            <div class="p-5 space-y-6">
+
+                <!-- Mouse Action Mode -->
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60">
+                    <h2 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-3 flex items-center">
+                        <i class="fa-solid fa-hand-pointer mr-2"></i> Interactive Tools
+                    </h2>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="modeSetAxis" class="py-2.5 px-3 rounded-lg border text-xs font-medium flex flex-col items-center justify-center transition border-indigo-500 bg-indigo-500/20 text-indigo-200">
+                            <i class="fa-solid fa-crosshairs text-base mb-1"></i>
+                            <span>Set Origin & X-Axis</span>
+                        </button>
+                        <button id="modeMeasureScale" class="py-2.5 px-3 rounded-lg border text-xs font-medium flex flex-col items-center justify-center transition border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700">
+                            <i class="fa-solid fa-ruler-combined text-base mb-1"></i>
+                            <span>Calibrate Distance</span>
+                        </button>
+                    </div>
+                    <p id="toolHelpText" class="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
+                        <i class="fa-solid fa-circle-info mr-1 text-indigo-400"></i> Click & drag on image to set Origin and pull X-axis vector direction.
+                    </p>
+                </div>
+
+                <!-- Scale Calibration Section -->
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                    <h2 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center justify-between">
+                        <span><i class="fa-solid fa-ruler mr-2"></i> Scale Calibration</span>
+                        <span id="currentPxPerUnit" class="text-[11px] font-normal text-slate-400">100.00 px/unit</span>
+                    </h2>
+
+                    <!-- Mode Toggle -->
+                    <div class="flex text-xs bg-slate-800 p-1 rounded-lg border border-slate-700">
+                        <button id="scaleTabDirect" class="flex-1 py-1 px-2 rounded bg-indigo-600 text-white font-medium transition">Direct Input</button>
+                        <button id="scaleTabMeasure" class="flex-1 py-1 px-2 rounded text-slate-400 font-medium transition">Reference Distance</button>
+                    </div>
+
+                    <!-- Direct Px/Unit Panel -->
+                    <div id="panelDirectScale" class="space-y-2">
+                        <label class="block text-xs text-slate-300">Pixels per Unit (px/unit)</label>
+                        <div class="relative">
+                            <input type="number" id="inputPxPerUnit" value="100" step="any" min="0.0001" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                            <span class="absolute right-3 top-2.5 text-xs text-slate-500">px/u</span>
+                        </div>
+                    </div>
+
+                    <!-- Measurement Scale Calculation Panel -->
+                    <div id="panelMeasureScale" class="space-y-2 hidden">
+                        <div>
+                            <label class="block text-xs text-slate-300">Last Measured Drag Distance</label>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <input type="text" id="measuredPxDisplay" readonly value="0.00 px" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-400 cursor-not-allowed">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-300">Corresponding Physical Distance</label>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <input type="number" id="physicalLengthInput" value="1.0" step="any" min="0.0001" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                                <span class="text-xs text-slate-400">units</span>
+                            </div>
+                        </div>
+                        <button id="applyCalibratedScale" class="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 px-3 rounded-lg transition shadow">
+                            Apply Calculated Scale
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Grid Ranges and Intervals -->
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                    <h2 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-border-top-left mr-2"></i> Grid & Range Controls
+                    </h2>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-300 mb-1">X Min (units)</label>
+                            <input type="number" id="xMinInput" value="-5" step="any" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-300 mb-1">X Max (units)</label>
+                            <input type="number" id="xMaxInput" value="5" step="any" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-300 mb-1">Y Min (units)</label>
+                            <input type="number" id="yMinInput" value="-5" step="any" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-300 mb-1">Y Max (units)</label>
+                            <input type="number" id="yMaxInput" value="5" step="any" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-slate-300 mb-1">Tick / Grid Interval</label>
+                        <input type="number" id="gridIntervalInput" value="1" step="any" min="0.0001" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Display Customization -->
+                <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700/60 space-y-3">
+                    <h2 class="text-xs font-semibold text-indigo-400 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-sliders mr-2"></i> Visual Options
+                    </h2>
+
+                    <div class="space-y-2">
+                        <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="showGridToggle" checked class="rounded border-slate-700 text-indigo-600 focus:ring-0 bg-slate-800">
+                            <span>Show Grid Lines</span>
+                        </label>
+                        <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="showLabelsToggle" checked class="rounded border-slate-700 text-indigo-600 focus:ring-0 bg-slate-800">
+                            <span>Show Axis Number Labels</span>
+                        </label>
+                        <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                            <input type="checkbox" id="yInvertToggle" class="rounded border-slate-700 text-indigo-600 focus:ring-0 bg-slate-800">
+                            <span>Invert Y-Axis Direction (Up = Positive)</span>
+                        </label>
+                    </div>
+
+                    <div class="pt-2 grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">X-Axis Color</label>
+                            <input type="color" id="xAxisColorInput" value="#ef4444" class="w-full h-8 bg-slate-800 rounded border border-slate-700 cursor-pointer">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] text-slate-400 mb-1">Y-Axis Color</label>
+                            <input type="color" id="yAxisColorInput" value="#22c55e" class="w-full h-8 bg-slate-800 rounded border border-slate-700 cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- Main Canvas Area -->
+        <main class="flex-1 bg-slate-950 flex flex-col items-center justify-center relative p-4 overflow-auto">
+            <div id="canvasContainer" class="relative max-w-full max-h-full flex items-center justify-center rounded-lg overflow-hidden border border-slate-800 shadow-2xl bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:16px_16px]">
+                <canvas id="mainCanvas" class="cursor-crosshair block"></canvas>
+            </div>
+
+            <!-- Empty state banner -->
+            <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-slate-500">
+                <i class="fa-solid fa-image text-5xl mb-3 text-slate-600"></i>
+                <p class="text-sm font-medium">Upload an image to start setting up your coordinate system</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // State management
+        const state = {
+            image: null,
+            imageLoaded: false,
+            
+            // Origin in Image Pixel space
+            origin: { x: 150, y: 150 },
+            
+            // X-Axis angle in radians relative to horizontal right (0 rad)
+            xAxisAngle: 0, 
+            
+            // Scale
+            pxPerUnit: 100,
+            
+            // Measurement mode temporary storage
+            lastMeasuredPx: 0,
+            
+            // Range & Grid config
+            xMin: -5,
+            xMax: 5,
+            yMin: -5,
+            yMax: 5,
+            gridInterval: 1,
+            
+            // Style & Toggles
+            showGrid: true,
+            showLabels: true,
+            yInverted: true, // true = Up is positive (Standard Math), false = Down is positive (Screen coord)
+            xAxisColor: '#ef4444',
+            yAxisColor: '#22c55e',
+            
+            // Interaction Mode
+            interactionMode: 'SET_AXIS', // 'SET_AXIS' | 'MEASURE_SCALE'
+            isDragging: false,
+            dragStart: { x: 0, y: 0 }
+        };
+
+        // DOM Element Cache
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const imageLoader = document.getElementById('imageLoader');
+        const emptyState = document.getElementById('emptyState');
+
+        // Input Elements
+        const modeSetAxisBtn = document.getElementById('modeSetAxis');
+        const modeMeasureScaleBtn = document.getElementById('modeMeasureScale');
+        const toolHelpText = document.getElementById('toolHelpText');
+
+        const scaleTabDirect = document.getElementById('scaleTabDirect');
+        const scaleTabMeasure = document.getElementById('scaleTabMeasure');
+        const panelDirectScale = document.getElementById('panelDirectScale');
+        const panelMeasureScale = document.getElementById('panelMeasureScale');
+
+        const inputPxPerUnit = document.getElementById('inputPxPerUnit');
+        const currentPxPerUnit = document.getElementById('currentPxPerUnit');
+        const measuredPxDisplay = document.getElementById('measuredPxDisplay');
+        const physicalLengthInput = document.getElementById('physicalLengthInput');
+        const applyCalibratedScaleBtn = document.getElementById('applyCalibratedScale');
+
+        const xMinInput = document.getElementById('xMinInput');
+        const xMaxInput = document.getElementById('xMaxInput');
+        const yMinInput = document.getElementById('yMinInput');
+        const yMaxInput = document.getElementById('yMaxInput');
+        const gridIntervalInput = document.getElementById('gridIntervalInput');
+
+        const showGridToggle = document.getElementById('showGridToggle');
+        const showLabelsToggle = document.getElementById('showLabelsToggle');
+        const yInvertToggle = document.getElementById('yInvertToggle');
+        const xAxisColorInput = document.getElementById('xAxisColorInput');
+        const yAxisColorInput = document.getElementById('yAxisColorInput');
+        const exportBtn = document.getElementById('exportBtn');
+
+        // Default placeholder canvas initialization
+        function initDefaultCanvas() {
+            canvas.width = 800;
+            canvas.height = 600;
+            state.origin = { x: canvas.width / 2, y: canvas.height / 2 };
+            render();
+        }
+
+        imageLoader.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.image = img;
+                    state.imageLoaded = true;
+                    emptyState.classList.add('hidden');
+
+                    // Resize canvas to image dimensions
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    // Reset origin to center of uploaded image
+                    state.origin = { x: img.width / 2, y: img.height / 2 };
+                    render();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        modeSetAxisBtn.addEventListener('click', () => {
+            state.interactionMode = 'SET_AXIS';
+            modeSetAxisBtn.className = "py-2.5 px-3 rounded-lg border text-xs font-medium flex flex-col items-center justify-center transition border-indigo-500 bg-indigo-500/20 text-indigo-200";
+            modeMeasureScaleBtn.className = "py-2.5 px-3 rounded-lg border text-xs font-medium flex flex-col items-center justify-center transition border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700";
+            toolHelpText.innerHTML = `<i class="fa-solid fa-circle-info mr-1 text-indigo-400"></i> Click & drag on image to set Origin and pull X-axis vector direction.`;
+        });
+
+        modeMeasureScaleBtn.addEventListener('click', () => {
+            state.interactionMode = 'MEASURE_SCALE';
+            modeMeasureScaleBtn.className = "py-2.5 px-3 rounded-lg border text-xs font-medium flex flex-col items-center justify-center transition border-indigo-500 bg-indigo-500/20 text-indigo-200";
+            modeSetAxisBtn.className = "py-2.5 px-3 rounded-lg border text-xs font-medium flex flex-col items-center justify-center transition border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700";
+            toolHelpText.innerHTML = `<i class="fa-solid fa-ruler mr-1 text-indigo-400"></i> Click & drag between two known points in the image to measure pixel distance.`;
+        });
+
+        // Scale Tabs
+        scaleTabDirect.addEventListener('click', () => {
+            scaleTabDirect.className = "flex-1 py-1 px-2 rounded bg-indigo-600 text-white font-medium transition";
+            scaleTabMeasure.className = "flex-1 py-1 px-2 rounded text-slate-400 font-medium transition";
+            panelDirectScale.classList.remove('hidden');
+            panelMeasureScale.classList.add('hidden');
+        });
+
+        scaleTabMeasure.addEventListener('click', () => {
+            scaleTabMeasure.className = "flex-1 py-1 px-2 rounded bg-indigo-600 text-white font-medium transition";
+            scaleTabDirect.className = "flex-1 py-1 px-2 rounded text-slate-400 font-medium transition";
+            panelMeasureScale.classList.remove('hidden');
+            panelDirectScale.classList.add('hidden');
+        });
+
+        function updateScaleDisplay() {
+            currentPxPerUnit.textContent = `${state.pxPerUnit.toFixed(2)} px/unit`;
+            inputPxPerUnit.value = state.pxPerUnit.toFixed(2);
+            render();
+        }
+
+        inputPxPerUnit.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (!isNaN(val) && val > 0) {
+                state.pxPerUnit = val;
+                currentPxPerUnit.textContent = `${state.pxPerUnit.toFixed(2)} px/unit`;
+                render();
+            }
+        });
+
+        applyCalibratedScaleBtn.addEventListener('click', () => {
+            const physicalLen = parseFloat(physicalLengthInput.value);
+            if (state.lastMeasuredPx > 0 && !isNaN(physicalLen) && physicalLen > 0) {
+                state.pxPerUnit = state.lastMeasuredPx / physicalLen;
+                updateScaleDisplay();
+            }
+        });
+
+        xMinInput.addEventListener('input', (e) => { state.xMin = parseFloat(e.target.value) || 0; render(); });
+        xMaxInput.addEventListener('input', (e) => { state.xMax = parseFloat(e.target.value) || 0; render(); });
+        yMinInput.addEventListener('input', (e) => { state.yMin = parseFloat(e.target.value) || 0; render(); });
+        yMaxInput.addEventListener('input', (e) => { state.yMax = parseFloat(e.target.value) || 0; render(); });
+        gridIntervalInput.addEventListener('input', (e) => { 
+            const val = parseFloat(e.target.value);
+            if (val > 0) { state.gridInterval = val; render(); }
+        });
+
+        showGridToggle.addEventListener('change', (e) => { state.showGrid = e.target.checked; render(); });
+        showLabelsToggle.addEventListener('change', (e) => { state.showLabels = e.target.checked; render(); });
+        yInvertToggle.addEventListener('change', (e) => { state.yInverted = e.target.checked; render(); });
+        xAxisColorInput.addEventListener('input', (e) => { state.xAxisColor = e.target.value; render(); });
+        yAxisColorInput.addEventListener('input', (e) => { state.yAxisColor = e.target.value; render(); });
+
+        function getCanvasCoordinates(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        canvas.addEventListener('mousedown', (e) => {
+            const pos = getCanvasCoordinates(e);
+            state.isDragging = true;
+            state.dragStart = pos;
+
+            if (state.interactionMode === 'SET_AXIS') {
+                state.origin = pos;
+            }
+            render();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!state.isDragging) return;
+            const pos = getCanvasCoordinates(e);
+
+            if (state.interactionMode === 'SET_AXIS') {
+                const dx = pos.x - state.origin.x;
+                const dy = pos.y - state.origin.y;
+                if (Math.hypot(dx, dy) > 3) {
+                    state.xAxisAngle = Math.atan2(dy, dx);
+                }
+            } else if (state.interactionMode === 'MEASURE_SCALE') {
+                const dx = pos.x - state.dragStart.x;
+                const dy = pos.y - state.dragStart.y;
+                state.lastMeasuredPx = Math.hypot(dx, dy);
+                measuredPxDisplay.value = `${state.lastMeasuredPx.toFixed(2)} px`;
+            }
+            render();
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (state.isDragging) {
+                state.isDragging = false;
+                render();
+            }
+        });
+
+        function render() {
+            // Clear Canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. Draw Image Background if loaded
+            if (state.imageLoaded && state.image) {
+                ctx.drawImage(state.image, 0, 0, canvas.width, canvas.height);
+            } else {
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Save state for coordinate transformation
+            ctx.save();
+
+            // Transform matrix to user-defined Origin & Rotation
+            ctx.translate(state.origin.x, state.origin.y);
+            ctx.rotate(state.xAxisAngle);
+
+            const yDir = state.yInverted ? -1 : 1; // Direct standard math coordinates (Up = positive)
+
+            // Convert physical range bounds to pixels
+            const xMinPx = state.xMin * state.pxPerUnit;
+            const xMaxPx = state.xMax * state.pxPerUnit;
+            const yMinPx = state.yMin * state.pxPerUnit * yDir;
+            const yMaxPx = state.yMax * state.pxPerUnit * yDir;
+
+            const stepPx = state.gridInterval * state.pxPerUnit;
+
+            // 2. Render Grid Lines
+            if (state.showGrid && stepPx > 3) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+
+                // Grid lines along X axis
+                const xStart = Math.ceil(state.xMin / state.gridInterval) * state.gridInterval;
+                for (let x = xStart; x <= state.xMax; x += state.gridInterval) {
+                    const px = x * state.pxPerUnit;
+                    ctx.beginPath();
+                    ctx.moveTo(px, yMinPx);
+                    ctx.lineTo(px, yMaxPx);
+                    ctx.stroke();
+                }
+
+                // Grid lines along Y axis
+                const yMinVal = Math.min(state.yMin, state.yMax);
+                const yMaxVal = Math.max(state.yMin, state.yMax);
+                const yStart = Math.ceil(yMinVal / state.gridInterval) * state.gridInterval;
+                for (let y = yStart; y <= yMaxVal; y += state.gridInterval) {
+                    const py = y * state.pxPerUnit * yDir;
+                    ctx.beginPath();
+                    ctx.moveTo(xMinPx, py);
+                    ctx.lineTo(xMaxPx, py);
+                    ctx.stroke();
+                }
+                ctx.setLineDash([]); // Reset dash
+            }
+
+            // 3. Main X & Y Axes Lines
+            ctx.lineWidth = 2.5;
+
+            // X Axis
+            ctx.strokeStyle = state.xAxisColor;
+            ctx.beginPath();
+            ctx.moveTo(xMinPx, 0);
+            ctx.lineTo(xMaxPx, 0);
+            ctx.stroke();
+
+            // Y Axis
+            ctx.strokeStyle = state.yAxisColor;
+            ctx.beginPath();
+            ctx.moveTo(0, yMinPx);
+            ctx.lineTo(0, yMaxPx);
+            ctx.stroke();
+
+            // 4. Render Ticks and Number Labels
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+
+            // X-Ticks and Labels
+            const xTickStart = Math.ceil(state.xMin / state.gridInterval) * state.gridInterval;
+            for (let x = xTickStart; x <= state.xMax; x += state.gridInterval) {
+                if (Math.abs(x) < 1e-6) continue; // Skip origin label here
+                const px = x * state.pxPerUnit;
+
+                // Tick Mark
+                ctx.strokeStyle = state.xAxisColor;
+                ctx.beginPath();
+                ctx.moveTo(px, -5);
+                ctx.lineTo(px, 5);
+                ctx.stroke();
+
+                // Number Label
+                if (state.showLabels) {
+                    ctx.save();
+                    ctx.translate(px, 18);
+                    ctx.rotate(-state.xAxisAngle); // Counter rotate text to keep upright
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText(Number(x.toFixed(4)).toString(), 0, 0);
+                    ctx.restore();
+                }
+            }
+
+            // Y-Ticks and Labels
+            const yMinVal = Math.min(state.yMin, state.yMax);
+            const yMaxVal = Math.max(state.yMin, state.yMax);
+            const yTickStart = Math.ceil(yMinVal / state.gridInterval) * state.gridInterval;
+            for (let y = yTickStart; y <= yMaxVal; y += state.gridInterval) {
+                if (Math.abs(y) < 1e-6) continue;
+                const py = y * state.pxPerUnit * yDir;
+
+                // Tick Mark
+                ctx.strokeStyle = state.yAxisColor;
+                ctx.beginPath();
+                ctx.moveTo(-5, py);
+                ctx.lineTo(5, py);
+                ctx.stroke();
+
+                // Number Label
+                if (state.showLabels) {
+                    ctx.save();
+                    ctx.translate(-16, py + 4);
+                    ctx.rotate(-state.xAxisAngle);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 4;
+                    ctx.fillText(Number(y.toFixed(4)).toString(), 0, 0);
+                    ctx.restore();
+                }
+            }
+
+            // 5. Draw Axis Arrows
+            drawArrowHead(ctx, xMaxPx, 0, 0, state.xAxisColor); // X Axis Arrow
+            drawArrowHead(ctx, 0, yMaxPx, state.yInverted ? -Math.PI / 2 : Math.PI / 2, state.yAxisColor); // Y Axis Arrow
+
+            // 6. Draw Origin Indicator
+            ctx.fillStyle = '#f59e0b';
+            ctx.beginPath();
+            ctx.arc(0, 0, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Label Origin (0,0)
+            if (state.showLabels) {
+                ctx.save();
+                ctx.translate(-12, 16);
+                ctx.rotate(-state.xAxisAngle);
+                ctx.fillStyle = '#f59e0b';
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = 4;
+                ctx.fillText('(0,0)', 0, 0);
+                ctx.restore();
+            }
+
+            ctx.restore(); // Restore base transform
+
+            // 7. Measurement Tool overlay line when actively dragging scale measurement
+            if (state.isDragging && state.interactionMode === 'MEASURE_SCALE') {
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 3]);
+
+                ctx.beginPath();
+                ctx.moveTo(state.dragStart.x, state.dragStart.y);
+                ctx.lineTo(
+                    getCanvasCoordinates(window.event || {}).x || state.dragStart.x,
+                    getCanvasCoordinates(window.event || {}).y || state.dragStart.y
+                );
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // Helper function to render arrow heads
+        function drawArrowHead(context, x, y, angle, color) {
+            context.save();
+            context.translate(x, y);
+            context.rotate(angle);
+            context.fillStyle = color;
+            context.beginPath();
+            context.moveTo(0, 0);
+            context.lineTo(-12, -6);
+            context.lineTo(-12, 6);
+            context.closePath();
+            context.fill();
+            context.restore();
+        }
+
+        exportBtn.addEventListener('click', () => {
+            const tempLink = document.createElement('a');
+            tempLink.download = 'coordinate-overlay-image.png';
+            tempLink.href = canvas.toDataURL('image/png');
+            tempLink.click();
+        });
+
+        // Initialize Canvas View
+        window.onload = () => {
+            initDefaultCanvas();
+        };
+    </script>
+</body>
+</html>
